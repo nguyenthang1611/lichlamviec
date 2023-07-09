@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Form Đăng ký Ca làm (Không trùng giờ) và Xuất ra Excel</title>
+  <style>
+    /* Thêm các style tùy chọn cho form */
+  </style>
+</head>
+<body>
+  <h2>Form Đăng ký Ca làm (Không trùng giờ) và Xuất ra Excel</h2>
+
+  <form id="registrationForm">
+    <label for="name">Họ tên:</label>
+    <input type="text" id="name" name="name" required><br><br>
+
+    <label for="position">Vị trí:</label>
+    <select id="position" name="position" required>
+      <option value="">Chọn vị trí</option>
+      <option value="phuc_vu">Phục vụ</option>
+      <option value="pha_che">Pha chế</option>
+      <option value="bep">Bếp</option>
+    </select><br><br>
+
+    <label for="shift">Ca làm:</label>
+    <select id="shift" name="shift" required>
+      <option value="">Chọn ca làm</option>
+      <option value="ca_sang">Ca sáng</option>
+      <option value="ca_chieu">Ca chiều</option>
+      <option value="ca_toi">Ca tối</option>
+    </select><br><br>
+
+    <label for="date">Ngày:</label>
+    <input type="date" id="date" name="date" required><br><br>
+
+    <button type="submit">Đăng ký</button>
+  </form>
+
+  <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+  <script>
+    document.getElementById("registrationForm").addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      // Lấy giá trị từ form
+      var name = document.getElementById("name").value;
+      var position = document.getElementById("position").value;
+      var shift = document.getElementById("shift").value;
+      var date = document.getElementById("date").value;
+
+      // Kiểm tra xem ca làm đã tồn tại trong danh sách đăng ký trước đó hay chưa
+      var existingRegistrations = JSON.parse(localStorage.getItem("registrations")) || [];
+
+      var maxRegistrations = 2; // Số lượng người tối đa trong ca làm "ca tối"
+      var shiftRegistrations = existingRegistrations.filter(function(registration) {
+        return registration.date === date && registration.shift === shift;
+      });
+
+      if (shift === "ca_toi" && shiftRegistrations.length >= maxRegistrations) {
+        // Đã đủ số lượng người trong ca làm "ca tối", hiển thị thông báo lỗi
+        alert("Ca làm 'ca tối' đã đủ số lượng người!");
+      } else {
+        // Ca làm không trùng giờ hoặc còn chỗ trống, lưu đăng ký và thông báo thành công
+        var newRegistration = { name: name, position: position, shift: shift, date: date };
+        existingRegistrations.push(newRegistration);
+        localStorage.setItem("registrations", JSON.stringify(existingRegistrations));
+        alert("Đăng ký thành công!");
+
+        // Xuất dữ liệu ra file Excel
+        var worksheet = XLSX.utils.json_to_sheet(existingRegistrations);
+        var workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "Registrations");
+        var excelBuffer = XLSX.write(workbook, { bookType: "xlsx", type: "array" });
+
+        // Tạo và tải xuống file Excel
+        var blob = new Blob([excelBuffer], { type: "application/octet-stream" });
+        var url = URL.createObjectURL(blob);
+        var link = document.createElement("a");
+        link.href = url;
+        link.download = "registrations.xlsx";
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }
+
+      // Reset form
+      document.getElementById("registrationForm").reset();
+    });
+  </script>
+</body>
+</html>
